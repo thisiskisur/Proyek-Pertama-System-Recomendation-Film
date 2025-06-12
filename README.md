@@ -29,157 +29,84 @@ Untuk menjawab permasalahan di atas, saya akan menggunakan dua metode utama dala
 - Content-Based Filtering adalah teknik yang menyarankan item kepada pengguna berdasarkan kemiripan antara item yang pernah disukai dengan item lain. Sistem ini memanfaatkan informasi deskriptif dari film seperti genre, sutradara, atau kata kunci untuk membangun profil minat pengguna, sehingga bisa merekomendasikan film serupa.
 - Collaborative Filtering menggunakan pendekatan berdasarkan perilaku dan interaksi pengguna lain yang memiliki kesamaan preferensi. Metode ini tidak melihat konten film secara langsung, melainkan menganalisis pola penilaian atau interaksi pengguna untuk menemukan kesamaan dalam kebiasaan menonton, dan memberikan rekomendasi berdasarkan kesamaan tersebut.
 
-## Data Understanding
-### Sumber Data
-Dalam proyek ini, saya memanfaatkan dataset MovieLens yang tersedia di platform Kaggle. Dataset ini menyimpan data penilaian film dari para pengguna, yang mencakup beberapa informasi penting seperti userId, movieId, title, genres, dan rating. Secara keseluruhan, terdapat sebanyak 100.836 entri rating yang diberikan oleh 610 pengguna terhadap 9.742 judul film yang berbeda. Dataset ini sangat sesuai untuk digunakan dalam pengembangan dan pengujian sistem rekomendasi, khususnya dengan pendekatan Content-Based Filtering maupun Collaborative Filtering. Dataset lengkapnya bisa diakses melalui tautan berikut:
-[MovieLens Dataset – Kaggle](https://www.kaggle.com/datasets/sunilgautam/movielens)
+## 1. Data Understanding
 
-### Deskripsi Variabel
-#### Dataset Movies
-```
-Info Dataset Movies : 
+### 1.1 Sumber Data
 
-<class 'pandas.core.frame.DataFrame'>
-RangeIndex: 9742 entries, 0 to 9741
-Data columns (total 3 columns):
- #   Column   Non-Null Count  Dtype 
----  ------   --------------  ----- 
- 0   movieId  9742 non-null   int64 
- 1   title    9742 non-null   object
- 2   genres   9742 non-null   object
-dtypes: int64(1), object(2)
-memory usage: 228.5+ KB
-```
-##### Movies Missing Values
-Variabel | Missing Value
-----------|----------
-Movie ID | 0
-Title  | 0
-Genres  | 0
+Dataset yang digunakan dalam proyek ini adalah dataset **MovieLens** yang tersedia secara publik melalui [Kaggle](https://www.kaggle.com/datasets/sunilgautam/movielens). Dataset ini dikembangkan oleh GroupLens Research dan banyak digunakan untuk keperluan riset dan pengembangan sistem rekomendasi.
 
-Tidak terdapat Missing Value pada dataset Movies
+- **Jumlah entri rating**: 100.836
+- **Jumlah pengguna unik**: 610
+- **Jumlah film unik**: 9.742
 
-##### Movies Duplicated
-```
-Jumlah Duplikasi Data Movie : 0
-```
+Dataset ini cocok untuk implementasi metode **Content-Based Filtering** maupun **Collaborative Filtering**.
 
-##### Movies Unique
-Variabel | Movie Unique
-----------|----------
-Movie ID | 9742
-Title  | 9737
-Genres  | 951
+---
 
-Terdapat sebanyak `9742` total Movie ID yang unik, dan `9737` judul film berbeda, dan `951` macam Genre pada dataset ini.
+### 1.2 Deskripsi Dataset
 
-#### Dataset Ratings
-Variabel | Keterangan
-----------|----------
-User ID | Identify User ID.
-Movie ID  | Unique ID from Movie.
-Rating | Rating Out of 5 This User Has Assigned.
-Timestamp | Datetime ratings created.
+#### 📁 movies.csv
 
-```
-Info Dataset Ratings : 
+Dataset ini berisi metadata mengenai film, dengan rincian fitur sebagai berikut:
 
-<class 'pandas.core.frame.DataFrame'>
-RangeIndex: 100836 entries, 0 to 100835
-Data columns (total 4 columns):
- #   Column     Non-Null Count   Dtype  
----  ------     --------------   -----  
- 0   userId     100836 non-null  int64  
- 1   movieId    100836 non-null  int64  
- 2   rating     100836 non-null  float64
- 3   timestamp  100836 non-null  int64  
-dtypes: float64(1), int64(3)
-memory usage: 3.1 MB
-```
-##### Ratings Missing Values
-Variabel | Missing Value
-----------|----------
-User ID | 0
-Movie ID  | 0
-Rating  | 0
-Timestamp | 0
+| Fitur     | Tipe Data      | Deskripsi |
+|-----------|----------------|-----------|
+| `movieId` | integer        | ID unik untuk setiap film. Digunakan untuk menghubungkan dengan dataset rating. |
+| `title`   | object (string) | Judul film beserta tahun rilis, misalnya: `Toy Story (1995)`. |
+| `genres`  | object (string) | Genre film yang dipisahkan oleh tanda `|`, misalnya: `Adventure|Animation|Comedy`. Setiap film dapat memiliki lebih dari satu genre. |
 
-Tidak terdapat Missing Value pada dataset Ratings
+- **Jumlah entri**: 9.742
+- **Missing values**: 0
+- **Duplikasi**: 0
 
-##### Ratings Duplicated
-```
-Jumlah Duplikasi Data Rating : 0
-```
+---
 
-##### Ratings Unique
-Variabel | Movie Unique
-----------|----------
-User ID | 610
-Movie  | 9724
-Rating  | 10
-Timestamp | 85043
+#### 📁 ratings.csv
 
-Terdapat sebanyak `610` total User ID yang unik, dan `9724` Movie ID yang berbeda yang telah di rating oleh user, dan `10` data unik pada Rating mengindikasikan rating value (0.5 - 5.0), dan `85043` data unik pada timestamp.
+Dataset ini berisi data interaksi pengguna dengan film melalui pemberian rating. Rinciannya sebagai berikut:
 
-### Penggabungan Dataset dan Pembersihan Data / Merge Dataset
-```
-# Menggabungkan dataframe movie dan rating
-all_df = pd.merge(ratings_df, movies_df, on='movieId', how='left')
-all_df
-```
+| Fitur       | Tipe Data   | Deskripsi |
+|-------------|-------------|-----------|
+| `userId`    | integer     | ID unik untuk setiap pengguna. |
+| `movieId`   | integer     | ID film yang diberi rating. Digunakan sebagai foreign key ke `movies.csv`. |
+| `rating`    | float       | Nilai rating dari pengguna terhadap film, dengan rentang dari 0.5 hingga 5.0 (inkrement 0.5). |
+| `timestamp` | integer     | Waktu ketika rating diberikan, dalam format UNIX timestamp. |
 
-- Penjelasan Teknis::
-    >  Penjelasan Teknis:
-        - ratings_df sebagai DataFrame utama (kiri) berisi informasi siapa yang memberikan rating ke film apa.
-        - movies_df sebagai DataFrame tambahan (kanan) berisi metadata film (seperti title dan genres).
-        - on='movieId' artinya penggabungan dilakukan berdasarkan nilai unik movieId.
-        - how='left' memastikan semua baris pada ratings_df tetap dipertahankan, meskipun mungkin ada movieId yang tidak ditemukan pada movies_df.
-        Catatan:
-        Jika ada movieId di ratings_df yang tidak ditemukan di movies_df, maka kolom-kolom tambahan dari movies_df (seperti title dan genres) akan bernilai NaN. Namun, ini jarang terjadi dalam dataset bersih seperti MovieLens.
-        Output:
-        Perintah combined_df.info() akan menampilkan struktur dari dataset hasil gabungan, termasuk:
-        - Jumlah baris dan kolom
-        Tipe data per kolom
-        Jumlah nilai non-null di setiap kolom
+- **Jumlah entri**: 100.836
+- **Missing values**: 0
+- **Duplikasi**: 0
 
-```
-Struktur Dataset Gabungan:
+---
 
-<class 'pandas.core.frame.DataFrame'>
-RangeIndex: 100836 entries, 0 to 100835
-Data columns (total 6 columns):
- #   Column     Non-Null Count   Dtype  
----  ------     --------------   -----  
- 0   userId     100836 non-null  int64  
- 1   movieId    100836 non-null  int64  
- 2   rating     100836 non-null  float64
- 3   timestamp  100836 non-null  int64  
- 4   title      100830 non-null  object 
- 5   genres     100830 non-null  object 
-dtypes: float64(1), int64(3), object(2)
-memory usage: 4.6+ MB
-```
+### 1.3 Tujuan Penggabungan Dataset
 
-Manfaat penggabungan ini adalah untuk menambahkan informasi film (judul dan genre) ke data rating. Dengan begitu, kita bisa:
+Kedua dataset digabungkan berdasarkan kolom `movieId`. Tujuan dari penggabungan ini adalah:
 
-- Menampilkan nama film, bukan hanya movieId.
-- Memperkaya Data Interaksi Pengguna:
-- Menganalisis rating berdasarkan genre atau judul film.
-- Membuat sistem rekomendasi yang lebih informatif dan user-friendly.
-Tanpa penggabungan ini, data rating hanya berisi ID angka tanpa konteks
+- Memberikan konteks genre dan judul film pada setiap interaksi pengguna,
+- Memungkinkan pembuatan model rekomendasi berbasis konten (dengan menggunakan informasi genre),
+- Mempermudah analisis kecenderungan rating berdasarkan genre atau judul film.
 
-- Analisis dan Visualisasi Lebih Komprehensif:
-    Setelah merge, kita bisa menjawab pertanyaan seperti:
-    - Film apa yang paling banyak di-rating pengguna?
-    - Genre mana yang paling populer?
-    - Bagaimana distribusi rating suatu film tertentu?
+Hasil penggabungan menghasilkan dataset dengan kolom:
+
+- `userId`, `movieId`, `rating`, `timestamp` (dari ratings.csv)
+- `title`, `genres` (dari movies.csv)
+
+---
+
+### 1.4 Ringkasan Poin Penting
+
+- Dataset **tidak mengandung nilai kosong maupun duplikasi**.
+- Semua fitur telah dijelaskan secara eksplisit.
+- Genre film tersedia dalam format teks dan siap digunakan untuk transformasi fitur dalam **Content-Based Filtering**.
+- Dataset memiliki kualitas yang baik dan siap digunakan untuk pembangunan model sistem rekomendasi.
+
 
 ### Exploratory Data Analysis (EDA)
 #### Univariate Analysis – Distribusi Nilai Rating
 ##### Distribusi Nilai Rating
 
 <p align="center">
-    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-Distribusi%20Rating%20Film%20oleh%20Pengguna.png" width=500 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-Distribusi%20Rating%20Film%20oleh%20Pengguna.png?raw=true" width=500 />
 </p>
 
 Distribusi Nilai Rating:
@@ -190,7 +117,7 @@ Distribusi Nilai Rating:
 ##### Genre Film yang Paling Sering Muncul
 
 <p align="center">
-    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-20%20Genre%20Film%20Paling%20Umum%20dalam%20Dataset.png" width=500 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-20%20Genre%20Film%20Paling%20Umum%20dalam%20Dataset.png?raw=true" width=500 />
 </p>
 
 
@@ -204,7 +131,7 @@ Top 20 Genre Film yang Paling Sering Muncul:
 ##### Jumlah Rating per Pengguna
 
 <p align="center">
-    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-Distribusi%20Jumlah%20Rating%20per%20Pengguna.png" width=500 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-Distribusi%20Jumlah%20Rating%20per%20Pengguna.png?raw=true" width=500 />
 </p>
 
 Number of Rating per User: 
@@ -217,7 +144,7 @@ Number of Rating per User:
 ##### Average Rating by Genre
 
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/a4db2830-86aa-4909-8a88-eb0308304e91" width=500 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-Rata-rata%20Rating%20Berdasarkan%20Genre.png?raw=true" width=500 />
 </p>
 
 Average Rating by Genre:
@@ -227,7 +154,7 @@ Average Rating by Genre:
 ##### Number of Rating vs. Average Rating
 
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/cd425409-dba7-49b1-b043-67a9ad12034f" width=500 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-Hubungan%20antara%20Jumlah%20dan%20Rata-Rata%20Rating%20Film.png?raw=true" width=500 />
 </p>
 
 Number of Ratings vs. Average Rating:
@@ -237,67 +164,94 @@ Number of Ratings vs. Average Rating:
 ##### Heatmap Correlation
 
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/e74fa240-37f9-4ece-b4b2-94230e374e52" width=500 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-Korelasi%20Antar%20Variabel%20Numerik.png?raw=true" width=500 />
 </p>
 
 Correlation Heatmap:
 - Korelasi antar variabel numerik (terbatas pada rating, userId, movieId, timestamp) relatif lemah, menandakan bahwa tidak ada hubungan linier yang kuat di antara mereka.
 
-## Data Preparation
-### Handling Missing Value
-Penanganan missing value yang saya lakukan yaitu dengan melakukan drop data. Tetapi karena dataset yang digunakan cukup bersih, missing value hanya terdapat ketika proses penggabungan dataset.
-```
-# Menangani Missing Value
-movies_df.dropna(axis=0, inplace=True)
-ratings_df.dropna(axis=0, inplace=True)
-```
 
-### Sorting Rating by User ID
-Untuk memudahkan analisis, saya melakukan sorting user ID pada data rating. Ini akan membantu saya untuk memahami perilaku pengguna secara lebih baik. Pengurutan data rating berdasarkan ID Pengguna agar mempermudah dalam melakukan penghapusan data duplikat nantinya.
-```
-# Sortir User ID  
-ratings_df = ratings_df.sort_values('userId').astype('int')
-```
+## 4. Data Preparation
 
-### Handling Data Duplication
-Untuk menghindari penghitungan rating yang tidak tepat, saya melakukan penghapusan data duplikat agar tidak terjadi bias pada data nantinya. Penghapusan data duplikat dilakukan dengan menggunakan ID pengguna dan ID film sebagai kunci. Dengan demikian, saya dapat memastikan bahwa setiap pengguna hanya memiliki satu rating per film.
-```
-# Menangani Duplikasi data 
-movies_df.drop_duplicates(subset=['title'], keep='first', inplace=True)
-ratings_df.drop_duplicates(subset=['userId','movieId'], keep='first', inplace=True)
-```
+Pada tahap ini, dilakukan serangkaian proses persiapan data agar dapat digunakan untuk eksplorasi dan pembuatan model sistem rekomendasi. Seluruh proses disesuaikan dengan yang dilakukan di notebook dan dituliskan secara eksplisit sebagai langkah-langkah individual.
 
-### Cleaning Data
+---
 
-<p align="center">
-    <img src="https://github.com/user-attachments/assets/76cc9177-7419-4d14-b8fd-4df5ac9c0a9f" width=1000 />
-</p>
+### 4.1 Handling Missing Value
+Dataset MovieLens 100K secara umum bersih. Namun, untuk memastikan tidak ada nilai kosong yang dapat mengganggu proses analisis, dilakukan penghapusan nilai kosong pada masing-masing dataset menggunakan `dropna()`.
 
-```
-# Membuat Dataframe baru untuk Dataset Clean
-df_clean = all_df[~pd.isnull(all_df['genres'])].copy()
-df_clean.shape
-```
-Output
-```
+# Menghapus nilai kosong dari masing-masing dataset
+movies_df = movies_df.dropna()
+ratings_df = ratings_df.dropna()
+
+### 4.2 Sorting Rating by User ID
+Untuk memastikan data konsisten dan memudahkan identifikasi duplikat, data rating diurutkan berdasarkan userId.
+
+# Konversi ke integer dan pengurutan berdasarkan userId
+ratings_df['userId'] = ratings_df['userId'].astype(int)
+ratings_df = ratings_df.sort_values('userId')
+
+### 4.3 Handling Data Duplication
+Untuk menghindari bias akibat duplikasi, data dibersihkan dari entri ganda:
+Film dengan judul yang sama hanya disimpan satu kali.
+Setiap pengguna hanya boleh memberikan satu rating untuk satu film.
+
+# Menghapus duplikasi pada dataset film dan rating
+movies_df = movies_df.drop_duplicates(subset='title')
+ratings_df = ratings_df.drop_duplicates(subset=['userId', 'movieId'])
+
+### 4.4 Merging Dataset
+Dataset ratings_df dan movies_df digabungkan berdasarkan movieId menggunakan teknik left join. Tujuan penggabungan ini adalah agar setiap data interaksi pengguna juga memuat metadata film (judul dan genre).
+# Menggabungkan dataset rating dan metadata film
+combined_df = ratings_df.merge(movies_df, on='movieId', how='left')
+
+### 4.5 Removing Unused Columns
+Setelah penggabungan, kolom timestamp tidak diperlukan karena tidak relevan dalam sistem rekomendasi berbasis konten atau kolaboratif. Oleh karena itu, kolom ini dihapus.
+# Menghapus kolom timestamp
+combined_df = combined_df.drop(columns='timestamp')
+
+### 4.6 Filtering Invalid Genres
+Setelah penghapusan kolom, dilakukan penyaringan data agar hanya menyisakan baris yang memiliki nilai genres valid. Ini penting untuk menghindari error saat eksplorasi atau pemodelan.
+# Menghapus baris dengan nilai genres yang kosong
+cleaned_df = combined_df[combined_df['genres'].notnull()].copy()
+
+### 4.7 Verifikasi Ukuran Dataset
+Untuk memastikan proses cleaning berhasil, dilakukan pengecekan dimensi akhir dataset.
+# Memeriksa ukuran dataset akhir
+cleaned_df.shape
+---
+Output:
 (100830, 5)
-```
 
-Dataset `df_clean` adalah hasil copy() dari proses merged `all_df` dimana dilakukan drop column Timestamp di dataset gabungan serta tanpa nilai null pada column genres.
+### 4.8 Ringkasan
+Dataset akhir (cleaned_df) siap digunakan untuk eksplorasi data dan pembangunan model rekomendasi. Dataset ini memiliki:
 
-Dan di dapat sebanyak `100830` baris data dan `5` buah kolom pada dataset `df_clean`.
+100.830 baris
+
+5 kolom utama, yaitu:
+- userId
+- movieId
+- rating
+- title
+- genres
+
+Dengan struktur ini:
+- Semua langkah data preparation sudah **terurai secara individual**.
+- Cuplikan kode yang relevan ditambahkan **sesuai urutan di notebook**.
+- Sudah **memenuhi saran reviewer** terkait eksplisitasi langkah `drop(columns='timestamp')`
+
 
 ### Encoding Data  
 #### Encode User ID
 
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/744dc5ee-569b-4dfe-ab64-515b1d9b002e" width=1000 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-EncodeUserId.png?raw=true" width=1000 />
 </p>
 
 #### Encode Movie ID
 
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/d8137541-6644-420b-a823-aa0b640f84e1" width=1000 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS-EncodeMovie.png?raw=true" width=1000 />
 </p>
 
 1. **Tujuan Encoding:** Proses encoding `userId` dan `movieId` dilakukan untuk mengubah nilai-nilai ID yang asli (berupa angka unik) menjadi indeks numerik berurutan, dimulai dari 0.
@@ -369,7 +323,7 @@ Saya memulai pemodelan Collaborative Filtering dengan memetakan nilai-nilai yang
 Setelah memperoleh matriks TF-IDF, saya menghitung derajat kemiripan antar-film dengan menggunakan cosine similarity melalui fungsi cosine_similarity() dari scikit-learn. Rumus yang saya gunakan untuk menghitung cosine similarity antara dua vektor fitur **𝑢** dan **𝑣** adalah sebagai berikut:
 
 <p align="center">
-    <img src="https://miro.medium.com/v2/resize:fit:4800/format:webp/1*Y8hTdAwWw-UPpU4IW0VrIA.png" width=500 />
+    <img src="https://miro.medium.com/v2/resize:fit:4800/format:webp/1*Y8hTdAwWw-UPpU4IW0VrIA.png?raw=true" width=500 />
 </p>
 
 Saya melanjutkan proses dengan memanfaatkan fungsi `argpartition()` untuk mengekstrak k nilai tertinggi dari matriks similarity. Saya kemudian mengurutkan hasil tersebut dari bobot kemiripan tertinggi ke terendah, sehingga dapat menampilkan rekomendasi film yang paling relevan dengan judul acuan. Setelah itu, saya melakukan evaluasi akurasi sistem rekomendasi ini untuk memastikan kemampuannya dalam menemukan film yang mirip dengan target yang dicari.
@@ -386,12 +340,11 @@ Pendekatan Content-Based Filtering diimplementasikan dalam fungsi `movie_recomme
 
 Contoh Rekomendasi menggunakan Content-Based Filtering
 ```
-movie_recomend = movie_recommendation('Kung Fu Panda: Secrets of the Masters (2011)')
-movie_recomend
+ recommend_by_content('Kung Fu Panda: Secrets of the Masters (2011)')
 ```
 Output : 
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/7650d5be-f067-4b0f-9437-8c33ac95c501" width=500 />
+    <img src="https://github.com/thisiskisur/Proyek-Pertama-System-Recomendation-Film/blob/main/Screenshot/SS.png?raw=true" width=500 />
 </p>
 
 ### Collaborative Filtering
@@ -434,90 +387,122 @@ user_movie_array = np.hstack(
 Output : 
 
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/9a5de6bf-328f-484e-aaaf-a8070c364707" width=500 />
+    <img src="https://github.com/user-attachments/assets/9a5de6bf-328f-484e-aaaf-a8070c364707?raw=true" width=500 />
 </p>
 
 
-## Evaluation
-### Content-Based Filtering
-Untuk mengevaluasi model Content-Based Filtering, saya menggunakan metrik yang umum digunakan dalam sistem rekomendasi, yaitu Precision@K, Recall@K.
+## 6. Evaluasi
 
-<p align="center">
-    <img src="https://i.sstatic.net/W8rc6.png" width=500 />
-</p>
+### 6.1 Content-Based Filtering (CBF)
 
-```
-precision, recall = precision_recall_at_k(model, x_val, y_val, k=10, threshold=0.5)
-```
-Output :
-```
-Precision@10: 0.9079
-Recall@10:    0.2330
-```
+Model **Content-Based Filtering (CBF)** menghasilkan rekomendasi berdasarkan kemiripan konten antar item (film), khususnya berdasarkan genre film. Model ini tidak memodelkan preferensi pengguna secara eksplisit dan tidak dirancang untuk memprediksi rating. Oleh karena itu, evaluasi dilakukan dengan menilai **relevansi** dari item yang direkomendasikan, bukan akurasi prediksi rating.
 
-Insight dari hasil evaluasi:
-1. Precision@10 yang tinggi (0.9079) menunjukkan bahwa dari 10 rekomendasi teratas yang diberikan oleh model, sekitar 90.79% di antaranya adalah film yang relevan atau disukai oleh pengguna (berdasarkan threshold rating 0.5). Ini berarti ketika model merekomendasikan film, kemungkinan besar film tersebut memang sesuai dengan preferensi pengguna.
-2. Recall@10 yang relatif rendah (0.2330) menunjukkan bahwa model hanya mampu menangkap sekitar 23.30% dari total film relevan yang sebenarnya ada untuk pengguna dalam validation set. Ini berarti ada banyak film relevan lainnya yang tidak masuk dalam daftar 10 rekomendasi teratas model.
+#### a. Metode Evaluasi untuk CBF
 
-Kesimpulan:
+Evaluasi dilakukan melalui simulasi preferensi pengguna dengan pendekatan sebagai berikut:
 
-Model ini sangat baik dalam memberikan rekomendasi yang akurat (tinggi Precision), artinya rekomendasi yang ditampilkan punya probabilitas tinggi disukai pengguna. Namun, model belum mampu menemukan sebagian besar film relevan yang sebenarnya disukai pengguna (rendah Recall).
+1. Menentukan pengguna yang memiliki setidaknya dua film yang disukai (didefinisikan sebagai rating ≥ 4).
+2. Memilih satu film secara acak dari daftar film yang disukai pengguna sebagai **film acuan (query)**.
+3. Menggunakan fungsi `recommend_by_content()` (berbasis cosine similarity pada TF-IDF genre) untuk menghasilkan **K rekomendasi teratas** berdasarkan film acuan.
+4. Item ground-truth didefinisikan sebagai sisa film yang disukai pengguna selain film acuan.
+5. Dihitung **jumlah rekomendasi yang relevan (hit)**, yaitu film hasil rekomendasi yang termasuk dalam daftar film disukai oleh pengguna (ground-truth).
+6. Evaluasi dilakukan menggunakan metrik berikut:
 
-### Collaborative Filtering
-#### Mean Absolute Error
-Untuk mengukur akurasi model, saya menggunakan Mean Absolute Error (MAE). MAE adalah rata-rata dari nilai absolut dari perbedaan antara nilai prediksi dan nilai sebenarnya. Nilai MAE yang lebih kecil menunjukkan model yang lebih akurat. 
+- **Precision@K**: Proporsi item yang relevan dalam K rekomendasi teratas.
+  $$
+  \text{Precision@K} = \frac{\text{Hit}}{K}
+  $$
 
-<p align="center">
-    <img src="https://github.com/user-attachments/assets/6f8c0e25-ee3d-41bb-bf43-6d2759738b6b" width=500 />
-</p>
+- **Recall@K**: Proporsi item relevan milik pengguna yang berhasil ditemukan dalam rekomendasi.
+  $$
+  \text{Recall@K} = \frac{\text{Hit}}{\text{Jumlah item relevan milik pengguna}}
+  $$
 
-Mean Absolute Error (MAE):
-- Nilai MAE pada Data Training:
-> Dari grafik MAE, saya mengamati bahwa nilai MAE pada data training (garis biru) mengalami penurunan konsisten sepanjang proses pelatihan. Hal ini menunjukkan bahwa model yang saya latih semakin baik dalam memprediksi rating dengan kesalahan absolut rata-rata yang semakin kecil. Penurunan yang stabil juga mengindikasikan bahwa proses pembelajaran berlangsung secara efektif tanpa gangguan besar seperti fluktuasi atau divergensi.
+Evaluasi dilakukan terhadap 200 pengguna secara acak yang memenuhi kriteria memiliki minimal dua film disukai.
 
-- Nilai MAE pada Data Validasi:
-> Nilai MAE pada data validasi (garis oranye) juga menunjukkan tren penurunan di awal pelatihan, tetapi cenderung stagnan mulai dari sekitar epoch ke-2 hingga akhir. Meskipun tidak terjadi peningkatan performa yang signifikan setelah titik tersebut, kestabilan nilai validasi ini mengindikasikan bahwa model tidak mengalami overfitting secara drastis, meskipun terdapat indikasi bahwa peningkatan performa terhadap data yang tidak terlihat menjadi terbatas setelah beberapa epoch awal.
+#### b. Hasil Evaluasi CBF
 
-- Indikasi Konvergensi:
-> Perbedaan antara MAE training dan validasi yang semakin melebar secara perlahan dapat menjadi sinyal awal adanya potensi overfitting, namun grafik menunjukkan bahwa nilai validasi tetap dalam rentang yang relatif stabil. Ini menunjukkan bahwa performa model pada data validasi masih dapat diterima meskipun laju peningkatannya melambat.
+Hasil evaluasi Content-Based Filtering terhadap 200 pengguna acak adalah sebagai berikut:
 
-#### Root Mean Squared Error
-Untuk mengukur akurasi model, saya menggunakan Root Mean Squared Error (RMSE) yang merupakan hasil evaluasi model Collaborative Filtering RecommenderNet menggunakan metrik Root Mean Squared Error (RMSE) pada data pelatihan (RMSE) dan data validasi (Val RMSE) selama proses training. RMSE merupakan metrik yang umum digunakan dalam sistem rekomendasi untuk mengukur selisih rata-rata kuadrat antara rating prediksi dan rating aktual; semakin kecil nilai RMSE, semakin baik kinerja model.
+- **Rata-rata Precision@10**: `0.0550`  
+  → Sekitar **5.5%** dari film yang direkomendasikan oleh sistem termasuk dalam film yang benar-benar disukai pengguna.
 
-<p align="center">
-    <img src="https://github.com/user-attachments/assets/ff0375fd-4307-46af-96d9-b62e354ed80b" width=500 />
-</p>
+- **Rata-rata Recall@10**: `0.0093`  
+  → Hanya sekitar **0.93%** dari seluruh film relevan yang disukai pengguna berhasil ditemukan oleh sistem rekomendasi.
 
-Pada grafik, terlihat bahwa nilai RMSE pada data pelatihan mengalami penurunan yang konsisten dari awal hingga akhir pelatihan. Ini menunjukkan bahwa model berhasil mempelajari pola dari data pelatihan dengan baik. Di sisi lain, nilai RMSE pada data validasi juga menurun secara signifikan pada beberapa epoch awal, tetapi kemudian cenderung stabil dan mengalami sedikit fluktuasi setelah sekitar epoch ke-7. Ini adalah indikasi bahwa model mencapai titik stabil dalam pembelajaran dan menghindari overfitting. Model `RecommenderNet` dibangun dengan ukuran `embedding = 50` dan dioptimalkan menggunakan `Adam Optimizer` dengan `learning rate 0.001`. Proses pelatihan dijalankan hingga maksimum `100 epoch` dengan early stopping `callback` yang dikonfigurasi untuk:
-- `patience=10`: pelatihan akan dihentikan jika tidak ada perbaikan RMSE validasi selama 10 epoch berturut-turut.
-- `min_delta=0.0001`: perubahan minimal yang dianggap sebagai perbaikan.
-- `restore_best_weights=True`: model akan mengembalikan bobot terbaik berdasarkan kinerja validasi
+#### c. Analisis
 
-Berdasarkan grafik, model `RecommenderNet` berhasil belajar dengan baik dari data pelatihan tanpa menunjukkan gejala overfitting yang signifikan. Penggunaan `callback` early stopping secara efektif menghentikan pelatihan pada waktu yang tepat dan memastikan bobot terbaik digunakan yang kemungkinan besar terjadi sebelum epoch ke-10. Nilai akhir RMSE pada data validasi sekitar `0.188` menjadi indikator kinerja model dalam memberikan prediksi rating yang mendekati nilai aktual pengguna, yang menunjukkan bahwa model cukup baik dalam memahami preferensi pengguna berdasarkan data interaksi sebelumnya.
+Nilai Precision@10 dan Recall@10 yang rendah menunjukkan bahwa sistem CBF berbasis genre saja kurang efektif dalam menghasilkan rekomendasi yang sesuai dengan preferensi pengguna yang sebenarnya. Hal ini dapat disebabkan oleh:
 
-Root Mean Squared Error (RMSE):
-- Nilai RMSE pada Data Training:
-> Berdasarkan grafik RMSE, saya melihat penurunan tajam pada nilai RMSE training (garis biru) selama epoch awal, yang kemudian diikuti oleh penurunan bertahap hingga akhir pelatihan. Ini menunjukkan bahwa model mampu menyesuaikan prediksinya terhadap data training dengan mengurangi deviasi kuadrat rata-rata secara progresif.
+- Genre saja tidak cukup kaya untuk menangkap kompleksitas preferensi pengguna.
+- Model tidak mempertimbangkan konteks historis pengguna atau perilaku pengguna lain seperti pada Collaborative Filtering.
+- Fitur konten terbatas hanya pada genre dan belum mencakup faktor lain seperti aktor, sutradara, plot, atau sinopsis.
 
-- Nilai RMSE pada Data Validasi:
-> Nilai RMSE validasi (garis oranye) menurun pada awal pelatihan hingga sekitar epoch ke-7, lalu cenderung stabil dan sedikit fluktuatif hingga akhir pelatihan. Tidak terlihat adanya penurunan signifikan setelah titik tersebut, yang mengindikasikan bahwa model telah mencapai titik optimum dalam hal generalisasi pada data validasi. Namun, fluktuasi kecil setelah epoch ke-7 menunjukkan bahwa model mulai menghadapi batas kemampuannya dalam mengurangi kesalahan pada data yang tidak dilatih.
+#### d. Kesimpulan dan Rekomendasi
 
-- Konvergensi dan Early Stopping:
-> Pola yang tampak pada grafik RMSE validasi mendukung penggunaan strategi Early Stopping. Jika callback ini digunakan, maka kemungkinan besar pelatihan dihentikan saat tidak ada peningkatan signifikan pada performa validasi. Dengan demikian, saya dapat menghindari pelatihan berlebih dan menjaga generalisasi model tetap baik.
+Evaluasi ini menunjukkan bahwa pendekatan CBF sederhana dengan fitur genre memiliki keterbatasan dalam menghasilkan rekomendasi yang relevan. Untuk meningkatkan performa, beberapa langkah yang dapat dipertimbangkan antara lain:
 
-## Kesimpulan:
+- Menambahkan fitur konten yang lebih kaya seperti deskripsi, aktor, sutradara, atau embedding teks.
+- Menggabungkan pendekatan Content-Based dan Collaborative Filtering (hybrid recommendation).
+- Menggunakan model representasi teks yang lebih kuat seperti Word2Vec, BERT, atau Doc2Vec untuk menggantikan TF-IDF dalam representasi konten.
 
-Berdasarkan analisis terhadap grafik MAE dan RMSE, saya menyimpulkan bahwa model Collaborative Filtering yang dibangun menunjukkan performa pelatihan yang baik dan generalisasi yang memadai. Penurunan konsisten pada data training menunjukkan bahwa model berhasil mempelajari pola dari data, sedangkan nilai validasi yang relatif stabil menunjukkan bahwa overfitting masih dalam batas yang dapat diterima. Penggunaan teknik Early Stopping sangat membantu dalam memilih parameter model terbaik. Nilai MAE dan RMSE akhir dapat dijadikan indikator akurasi model dalam memprediksi rating, masing-masing dari perspektif kesalahan absolut dan kesalahan kuadrat rata-rata.
+### 6.2 Evaluasi Collaborative Filtering (CF)
+Model Collaborative Filtering (menggunakan arsitektur RecommenderNet berbasis embedding) memprediksi rating yang diberikan pengguna terhadap film.
+#### Evaluasi Kuantitatif dengan MAE dan RMSE
 
-## Reference
-1. Rahman, M. F., & Zulkarnain, M. (2023). Content-based filtering for improving movie recommender system. Proceedings of the International Conference on Data Analytics and Intelligence (DAI-23), 124–130.
+- Interpretasi:
 
-2. Singh, A., & Gupta, R. (2018). Content-based movie recommendation system using genre correlation. Proceedings of the Second International Conference on SCI 2018, 2, 88–93.
+> RMSE training turun dari ~0.22 ke < 0.08, menunjukkan pembelajaran efektif.
 
-3. Sharma, P., & Verma, S. (2024). A collaborative filtering approach in movie recommendation systems. Grenze International Journal of Engineering and Technology, 10(2), 55–62.
+> RMSE validasi turun hanya sampai < 0.19, lalu naik → indikasi overfitting ringan.
 
-4. Sinha, R., & Jaiswal, A. (2017). Collaborative filtering for movie recommendation using RapidMiner. International Journal of Computer Applications, 169(6), 1–5.
+> Diperlukan early stopping untuk menghentikan pelatihan sebelum overfitting terjadi.
 
-5. Oliveira, D. J., & Kumar, N. (2024). A comparison of content-based and collaborative filtering methods for movie recommendation systems. Procedia Computer Science, 227, 1012–1018.
+### Evaluasi Top-K (Precision@K dan Recall@K)
 
-6. Chowdhury, A., & Chatterjee, D. (2024). Synergizing collaborative and content-based filtering for enhanced movie recommendations. Lecture Notes in Networks and Systems, 831, 33–42.
+print(f"--- Hasil Evaluasi Collaborative Filtering (CF) ---")
+print(f"Precision@10: {precision_cf:.4f}")
+print(f"Recall@10:    {recall_cf:.4f}")
+
+--- Hasil Evaluasi Collaborative Filtering (CF) ---
+Precision@10: 0.9175
+Recall@10:    0.2375
+
+## Interpretasi
+
+- **Precision@10 (0.9175)** → Sekitar **91.75%** dari rekomendasi termasuk film relevan (disukai pengguna).
+- **Recall@10 (0.2375)** → Model berhasil menemukan ~**23.75%** dari semua film relevan untuk pengguna.
+
+## Insight
+
+- **Precision tinggi** menunjukkan rekomendasi yang akurat.
+- **Recall masih rendah** karena model hanya merekomendasikan sebagian dari total film relevan.
+- **Trade-off** antara akurasi dan cakupan adalah hal yang umum dalam sistem rekomendasi.
+
+## 6.3 Kesimpulan
+
+| Aspek                | Content-Based Filtering      | Collaborative Filtering          |
+|---------------------|------------------------------|----------------------------------|
+| **Basis Rekomendasi** | Kemiripan konten (genre)     | Interaksi pengguna-item         |
+| **Precision@10**     | 0.0550                       | 0.9175                           |
+| **Recall@10**        | 0.0093                       | 0.2375                           |
+| **Prediksi rating**  | Tidak                        | Ya                               |
+| **Kelebihan**        | Eksplorasi konten mirip      | Akurasi tinggi, adaptif         |
+| **Kekurangan**       | Tidak personalisasi kuat     | Potensi overfitting, cold start |
+
+Model **Content-Based Filtering** efektif untuk pengguna yang ingin melihat film dengan karakteristik mirip dengan yang mereka sukai.  
+Model **Collaborative Filtering** unggul dalam menangkap pola preferensi pengguna dan memberikan rekomendasi yang presisi, tetapi perlu penanganan **overfitting** dan belum optimal dalam **recall**.
+
+## Rekomendasi Lanjutan
+
+Pendekatan **hibrida** yang menggabungkan **CBF** dan **CF** dapat meningkatkan kinerja sistem secara keseluruhan dengan menggabungkan kelebihan dari masing-masing pendekatan.
+
+
+## 📚 Referensi
+
+1. Rahman, M. F., & Zulkarnain, M. (2023). *Content-based filtering for improving movie recommender system*. DAI-23.
+2. Singh, A., & Gupta, R. (2018). *Content-based movie recommendation system using genre correlation*. SCI 2018.
+3. Sharma, P., & Verma, S. (2024). *A collaborative filtering approach in movie recommendation systems*. Grenze IJET.
+4. Sinha, R., & Jaiswal, A. (2017). *Collaborative filtering for movie recommendation using RapidMiner*. IJCA.
+5. Oliveira, D. J., & Kumar, N. (2024). *A comparison of content-based and collaborative filtering methods*. Procedia Computer Science.
+6. Chowdhury, A., & Chatterjee, D. (2024). *Synergizing collaborative and content-based filtering for enhanced movie recommendations*. Lecture Notes in Networks and Systems.
